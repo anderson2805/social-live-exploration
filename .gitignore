@@ -1,0 +1,6 @@
+/archive
+/config.ini
+/__pycache__
+/chat_download.py
+/chat_enrichment.py
+/service_mongo.py
