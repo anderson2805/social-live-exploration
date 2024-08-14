@@ -4,3 +4,4 @@
 /chat_download.py
 /chat_enrichment.py
 /service_mongo.py
+/service.log

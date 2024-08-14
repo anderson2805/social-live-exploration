@@ -31,7 +31,7 @@ except KeyError: # If the key is not found in the config file
     username = st.secrets["MONGODB"]["username"]
     password = st.secrets["MONGODB"]["password"]
 
-print(username)
+
 class ChatMessagesHandler:
     def __init__(self, username=username, password=password):
         # MongoDB connection setup
@@ -52,7 +52,7 @@ class ChatMessagesHandler:
 
     def get_collection(self):
         return list(self.db.collection.find())
-
+    
     def insert_collection(self, url, platform="YouTube"):
         try:
             result = self.db.collection.update_one(

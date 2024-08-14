@@ -5,7 +5,7 @@ import time
 import sqlite3
 import plotly.graph_objects as go
 import plotly.express as px
-from sql_table import collection_start_status, read_messages_from_db_enriched, read_messages_from_db
+from archive.sql_table import collection_start_status, read_messages_from_db_enriched, read_messages_from_db
 from streamlit_extras.metric_cards import style_metric_cards 
 
 # Get list of active collection URLs

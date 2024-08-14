@@ -7,6 +7,10 @@ from datetime import datetime
 import sqlite3
 import plotly.graph_objects as go
 import plotly.express as px
+from datetime import datetime
+import pytz
+
+
 #from sql_table import collection_start_status, read_messages_from_db_enriched, read_messages_from_db
 from mongo_connect import ChatMessagesHandler
 from streamlit_extras.metric_cards import style_metric_cards 
@@ -150,8 +154,10 @@ enriched_msgs_df['Toxic'] = enriched_msgs_df['Toxic'].astype(bool)
 enriched_msgs_df['Enriched'] = enriched_msgs_df['Enriched'].astype(bool)
 enriched_msgs_df['Create DateTime'] = pd.to_datetime(enriched_msgs_df['Create DateTime'], errors='coerce')
 
+# Set the timezone to GMT+8
+timezone = pytz.timezone('Asia/Singapore')  # Singapore is in GMT+8
 
-st.markdown(f"## Dashboard (Last updated - {datetime.now().strftime('%H:%M:%S')})")
+st.markdown(f"## Dashboard (Last updated - {datetime.now(timezone).strftime('%H:%M:%S')})")
 # Group sentiments by sentiment type
 sentiments = enriched_msgs_df['Sentiment'].value_counts().to_dict()
 sentiments = {k.capitalize(): v for k, v in sentiments.items()}
@@ -286,7 +292,7 @@ column_config = {
                 "EN",
                 "MS",
                 "ZH",
-                "TA"
+                "TA",
                 "Other",
             ],
             required=True,
