@@ -7,7 +7,7 @@ codebook = st.Page(
 )
 
 collection = st.Page(
-    "frontend/collection.py", title="Collection Insertion/Status", icon=":material/youtube_activity:", default=True
+    "frontend/collection.py", title="Collection Center", icon=":material/youtube_activity:", default=True
 )
 dashboard = st.Page(
     "frontend/dashboard_mongo.py", title="Dashboard", icon=":material/dashboard:"

@@ -48,7 +48,7 @@ else:
 
 if insert_btn:
     if handler.insert_collection(url):
-        st.write(f"Collection for {url} inserted.")
+        st.write(f"Collection for {url} inserted and started.")
     else:
         st.write(f"Collection for {url} already exists.")
     st.rerun()

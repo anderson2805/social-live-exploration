@@ -57,14 +57,14 @@ class ChatMessagesHandler:
         try:
             result = self.db.collection.update_one(
                 {"url": url},
-                {"$set": {"platform": platform, "status": "stopped"}},
+                {"$set": {"platform": platform, "status": "start"}},
                 upsert=True
             )
             if result.upserted_id:
                 print(f"Inserted URL '{url}' into the collection.")
                 return True
             else:
-                # print(f"Updated status for URL '{url}' to 'start'.")
+                print(f"Updated status for URL '{url}' to 'start'.")
                 return False
         except Exception as e:
             print(f"Database error: {e}")
