@@ -52,7 +52,7 @@ class ChatMessagesHandler:
 
     def get_collection(self):
         return list(self.db.collection.find())
-    
+
     def insert_collection(self, url, platform="YouTube"):
         try:
             result = self.db.collection.update_one(
@@ -109,6 +109,10 @@ class ChatMessagesHandler:
             upsert=True
         )
         
+    def get_service_status(self):
+        service_doc = self.db.service.find_one()
+        return service_doc['status'] if service_doc else None
+    
     def read_messages_from_db(self, limit=None):
         pipeline = [
             {"$match": {
@@ -123,7 +127,14 @@ class ChatMessagesHandler:
         return list(self.db.messages.aggregate(pipeline))
     
     def read_messages_from_db_enriched(self):
-        return list(self.db.messages.find({"enriched": True, "$expr": {"$gt": [{"$strLenCP": "$message"}, 5]}}))
+        return list(self.db.messages.find({
+            "enriched": True,
+            "$expr": {"$gt": [{"$strLenCP": "$message"}, 5]},
+            "$or": [
+                {"delete": {"$ne": True}},
+                {"delete": {"$exists": False}}
+            ]
+        }))
 
     def read_all_msgs(self, urls):
         video_ids = [url.split('=')[1] for url in urls]
@@ -134,7 +145,22 @@ class ChatMessagesHandler:
         }))
 
     def delete_collection(self, urls):
-        self.db.collection.delete_many({"url": {"$in": urls}})
+        # Extract video_ids from urls
+        video_ids = [url.split('=')[1] for url in urls]
+        
+        # Delete documents from the collection collection
+        delete_result = self.db.collection.delete_many({"url": {"$in": urls}})
+        
+        # Update the "delete" field to True in the messages collection
+        update_result = self.db.messages.update_many(
+            {"vid_id": {"$in": video_ids}},
+            {"$set": {"delete": True}}
+        )
+        
+        return {
+            "deleted_count": delete_result.deleted_count,
+            "modified_count": update_result.modified_count
+        }
 
     # async def update_msg_enrichment_async(self, id, sg, mil, rnr, lang, troll, toxic, senti):
     #    await self.db.messages.update_one(
@@ -320,7 +346,7 @@ if __name__ == "__main__":
     
     handler = ChatMessagesHandler()
     
-    
+    # print(handler.get_service_status())
     
     # Test the MongoDB connection
     handler.test_connection()
@@ -334,37 +360,5 @@ if __name__ == "__main__":
     # handler.insert_collection("https://www.youtube.com/watch?v=GPNVG0DIAGk")
        
     handler.create_msg_index()
-    
-    # Test the insert_messages function
-    # Format of data: (vid_id, author, author_id, dt_stamp, msg_id, message)
-    # data = [
-    #     ("wsT2D03KTMM",
-    #         "John Doe",
-    #         "12345",
-    #         dt.now(),
-    #         "msg123",
-    #         "Hello, World!"),
-    #     ("wsT2D03KTMM",
-    #         "Jane Smith",
-    #         "67890",
-    #         dt.now(),
-    #         "msg456",
-    #         "Hi there!")]
-    # handler.insert_messages(data)
-    
-    # Test the read_messages_from_db function
+
     print(handler.read_messages_from_db())
-    # Get msg id
-    
-    # Test the update_msg_enrichment_async function
-    # mishap="Neutral",
-    # sg="Favor",
-    # mil="NA",
-    # rnr="Against",
-    # lang="EN",
-    # troll=False,
-    # toxic=False,
-    # senti="Positive"
-    # Async handler.update_msg_enrichment_async
-    # asyncio.run(handler.update_msg_enrichment_async(1, "Favor", "NA", "Against", "EN", False, False, "Positive"))
-    

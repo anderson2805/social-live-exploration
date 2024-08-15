@@ -35,6 +35,11 @@ with col3:
 with col4:
     del_btn = st.button("Delete", type="primary", use_container_width=True)
 
+if handler.get_service_status() == "stopped":
+    st.write("Backend collection service is stopped. Please contact support to start the service. 🔴")
+else:
+    st.write("Backend collection service is running. ✅")
+
 
 if event.selection.rows:
     ss['collection_select'] = df.iloc[event.selection.rows]['URL'].values.tolist()
