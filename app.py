@@ -12,11 +12,13 @@ collection = st.Page(
 dashboard = st.Page(
     "frontend/dashboard_mongo.py", title="Dashboard", icon=":material/dashboard:"
 )
+summary = st.Page(
+    "frontend/summarisation.py", title="Summary", icon=":material/summarize:"
+)
 
 
 
-
-pg = st.navigation([codebook, collection, dashboard])
+pg = st.navigation([codebook, collection, dashboard, summary])
 
 
 pg.run()

@@ -218,7 +218,9 @@ with col3:
     if toxic_true == 0:
         st.metric(label="**Toxic**💀", value="Not Applicable")
     else:
-        st.metric(label="**Toxic**💀", value=f"{toxic_true} of {len(enriched_msgs_df['Toxic'])} ({round(toxic_true / len(enriched_msgs_df['Toxic']) * 100, 1)}%)")
+        st.metric(label="**Toxic**💀", 
+                  value=f"{toxic_true} of {len(enriched_msgs_df['Toxic'])} ({round(toxic_true / len(enriched_msgs_df['Toxic']) * 100, 1)}%)",
+                  help="Indicates if the comment contains harmful or inappropriate content.")
 style_metric_cards(box_shadow=False)
 
 
@@ -277,7 +279,7 @@ st.plotly_chart(lang_fig, use_container_width=True)
 
 
 not_enriched = handler.read_messages_from_db()
-st.markdown(f"#### Datasource ({len(not_enriched)} not enriched, {len(enriched_msgs)} enriched)")
+st.markdown(f"#### Datasource ({len(not_enriched)} not enriched, {len(enriched_msgs)} enriched)", help = "Messages less than 5 characters are not enriched or displayed.")
 
 # Drop msg_id column
 enriched_msgs_df.drop(columns=['Msg Id', 'Author Id'], inplace=True)
@@ -370,7 +372,7 @@ for i in range(len(enriched_msgs_df)):
 
 ds_col1, ds_blank, ds_col2 = st.columns([1, 1, 1])
 with ds_col1:
-    auto_refresh_toggle = st.toggle("Auto Refresh", not bool(ss.get("changed_rows")))
+    auto_refresh_toggle = st.toggle("Auto Refresh", not bool(ss.get("changed_rows")), help = "Automatically refresh the page every 30 seconds to fetch new data.")
 with ds_col2:
     update_btn = st.button("Update", key="update_btn", use_container_width=True, type="primary")
     

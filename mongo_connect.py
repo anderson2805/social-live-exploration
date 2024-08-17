@@ -3,13 +3,13 @@ from pymongo.errors import OperationFailure
 from pymongo.read_concern import ReadConcern
 from pydantic import BaseModel, Field
 from configparser import ConfigParser
-from typing import TypedDict
+from typing import Literal, TypedDict
 from datetime import datetime as dt
 import logging
 from urllib.parse import quote_plus
 import asyncio
 import streamlit as st
-
+import os
 class EnrichmentUpdate(TypedDict):
     id: int
     sg: str
@@ -21,10 +21,12 @@ class EnrichmentUpdate(TypedDict):
     senti: str
     societal_impact: str
 
-# Get the MongoDB secret from config.ini file, if fail get it from st.secrets
+# If it's not an absolute path, make it relative to the script directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(script_dir, 'config.ini')
 config = ConfigParser()
 try:
-    config.read('config.ini')
+    config.read(config_path)
     username = config['MONGODB']['username']
     password = config['MONGODB']['password']
 except KeyError: # If the key is not found in the config file
@@ -112,6 +114,16 @@ class ChatMessagesHandler:
     def get_service_status(self):
         service_doc = self.db.service.find_one()
         return service_doc['status'] if service_doc else None
+
+    def update_service_status(self, status: Literal['start', 'stopped']):
+        write_concern = WriteConcern(w='majority', wtimeout=5000)
+        self.db.service.with_options(
+            write_concern=write_concern
+        ).update_one(
+            {},
+            {"$set": {"status": status}},
+            upsert=True
+        )
     
     def read_messages_from_db(self, limit=None):
         pipeline = [
@@ -135,6 +147,95 @@ class ChatMessagesHandler:
                 {"delete": {"$exists": False}}
             ]
         }))
+        
+    def get_recent_message_breakdowns(self, limit=30):
+        pipeline = [
+            {
+                "$match": {
+                    "enriched": True,
+                    "$expr": {"$gt": [{"$strLenCP": "$message"}, 5]},
+                    "$or": [
+                        {"delete": {"$ne": True}},
+                        {"delete": {"$exists": False}}
+                    ]
+                }
+            },
+            {
+                "$sort": {"dt_stamp": -1}
+            },
+            {
+                "$facet": {
+                    "sentiment_pos": [
+                        {"$match": {"senti": "Pos"}},
+                        {"$limit": limit}
+                    ],
+                    "sentiment_neg": [
+                        {"$match": {"senti": "Neg"}},
+                        {"$limit": limit}
+                    ],
+                    "sg_favor": [
+                        {"$match": {"sg": "Favor"}},
+                        {"$limit": limit}
+                    ],
+                    "sg_against": [
+                        {"$match": {"sg": "Against"}},
+                        {"$limit": limit}
+                    ],
+                    "military_favor": [
+                        {"$match": {"mil": "Favor"}},
+                        {"$limit": limit}
+                    ],
+                    "military_against": [
+                        {"$match": {"mil": "Against"}},
+                        {"$limit": limit}
+                    ],
+                    "religion_race_favor": [
+                        {"$match": {"rnr": "Favor"}},
+                        {"$limit": limit}
+                    ],
+                    "religion_race_against": [
+                        {"$match": {"rnr": "Against"}},
+                        {"$limit": limit}
+                    ],
+                    "societal_impact_favor": [
+                        {"$match": {"societal_impact": "Favor"}},
+                        {"$limit": limit}
+                    ],
+                    "societal_impact_against": [
+                        {"$match": {"societal_impact": "Against"}},
+                        {"$limit": limit}
+                    ]
+                }
+            }
+        ]
+        
+        results = self.db.messages.aggregate(pipeline).next()
+        
+        # Organize results into a nested dictionary
+        breakdowns = {
+            "sentiment": {
+                "Pos": results["sentiment_pos"],
+                "Neg": results["sentiment_neg"]
+            },
+            "sg": {
+                "Favor": results["sg_favor"],
+                "Against": results["sg_against"]
+            },
+            "military": {
+                "Favor": results["military_favor"],
+                "Against": results["military_against"]
+            },
+            "religion_race": {
+                "Favor": results["religion_race_favor"],
+                "Against": results["religion_race_against"]
+            },
+            "societal_impact": {
+                "Favor": results["societal_impact_favor"],
+                "Against": results["societal_impact_against"]
+            }
+        }
+        
+        return breakdowns
 
     def read_all_msgs(self, urls):
         video_ids = [url.split('=')[1] for url in urls]
@@ -206,7 +307,8 @@ class ChatMessagesHandler:
                 "toxic": update['toxic'],
                 "senti": update['senti'],
                 "societal_impact": update['societal_impact'],
-                "enriched": True
+                "enriched": True,
+                "dt_enriched": dt.now()
             }
             
             bulk_operations.append(
@@ -246,7 +348,8 @@ class ChatMessagesHandler:
             'id_index': [("id", ASCENDING)],
             'enriched_index': [("enriched", ASCENDING)],
             'vid_id_index': [("vid_id", ASCENDING)],
-            'msg_id_index': [("msg_id", ASCENDING)]
+            'msg_id_index': [("msg_id", ASCENDING)],
+            'delete_index': [("delete", ASCENDING)]
         }
 
         for index_name, index_key in indexes_to_create.items():
@@ -304,13 +407,6 @@ class ChatMessagesHandler:
             logging.error(f"An error occurred while inserting messages: {e}")
             return None
 
-    def get_negative_messages(self):
-        return list(self.db.messages.find({
-            "enriched": True,
-            "$expr": {"$gt": [{"$strLenCP": "$message"}, 5]},
-            "senti": "Negative"
-        }))
-    
     def test_connection(self):
         try:
             self.client.admin.command('ping')
@@ -324,7 +420,15 @@ class ChatMessagesHandler:
         self.db.collection.delete_many({})
         print("Deleted all documents from collection collection.")
         
-
+    def insert_summaries(self, summaries):
+        try:
+            result = self.db.summaries.insert_one(summaries)
+            print(f"Inserted summaries for {result.inserted_id}.")
+            return True
+        except Exception as e:
+            print(f"Database error: {e}")
+            return False
+        
     async def _do_update(self, id: int, update_data: dict):
         # This method will handle both synchronous and asynchronous contexts
         loop = asyncio.get_event_loop()
