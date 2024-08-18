@@ -80,8 +80,7 @@ Provide your summary in a short paragraphs and bold on the key themes.\n\nMessag
     return response["choices"][0]['message']['content']
 
 handler = ChatMessagesHandler()
-recent_msgs = handler.get_recent_message_breakdowns()
-recent_msgs_updated = copy.deepcopy(recent_msgs)
+
 ss = st.session_state
 # Custom CSS
 st.markdown("""
@@ -113,6 +112,8 @@ mapped_section = {"sg": "Singapore",
                     "military": "Military"}
 label_map = {"Favor": "Favor", "Against": "Against", "Pos": "Positive", "Neg": "Negative"}
 if generate_summary:
+    recent_msgs = handler.get_recent_message_breakdowns(int(msg_threshold))
+    recent_msgs_updated = copy.deepcopy(recent_msgs)
     for section, value in recent_msgs.items():
         with st.container(border=True):
             st.markdown(f"## {mapped_section[section]}")

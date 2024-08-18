@@ -375,7 +375,9 @@ with ds_col1:
     auto_refresh_toggle = st.toggle("Auto Refresh", not bool(ss.get("changed_rows")), help = "Automatically refresh the page every 30 seconds to fetch new data.")
 with ds_col2:
     update_btn = st.button("Update", key="update_btn", use_container_width=True, type="primary")
+
     
+
 if update_btn:
     st.write("Updating the database...")
     enriched_msgs_list = []
